@@ -1,6 +1,8 @@
 let expenses = [];
 let filteredExpenses = [];
 let currentSortBy = 'date-desc';
+let currentDate = new Date();
+let selectedDate = null;
 
 const expenseForm = document.getElementById('expenseForm');
 const expensesList = document.getElementById('expensesList');
@@ -8,16 +10,29 @@ const categoryStats = document.getElementById('categoryStats');
 const totalAmount = document.getElementById('totalAmount');
 const filterCategory = document.getElementById('filterCategory');
 const sortBy = document.getElementById('sortBy');
+const calendar = document.getElementById('calendar');
+const currentMonthEl = document.getElementById('currentMonth');
+const prevMonthBtn = document.getElementById('prevMonth');
+const nextMonthBtn = document.getElementById('nextMonth');
 
 async function initApp() {
     await loadExpenses();
     setupEventListeners();
+    renderCalendar();
 }
 
 function setupEventListeners() {
     expenseForm.addEventListener('submit', handleFormSubmit);
     filterCategory.addEventListener('change', handleFilterChange);
     sortBy.addEventListener('change', handleSortChange);
+    prevMonthBtn.addEventListener('click', () => {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        renderCalendar();
+    });
+    nextMonthBtn.addEventListener('click', () => {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        renderCalendar();
+    });
 }
 
 async function handleFormSubmit(e) {
@@ -63,6 +78,7 @@ async function loadExpenses() {
         applySort();
         renderExpenses();
         renderStats();
+        renderCalendar();
 
     } catch (error) {
         console.error('Ошибка при загрузке расходов:', error);
@@ -200,6 +216,77 @@ async function deleteExpense(id) {
     } catch (error) {
         console.error('Ошибка при удалении расхода:', error);
         alert('Не удалось удалить расход');
+    }
+}
+
+function renderCalendar() {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+
+    const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+                        'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+    currentMonthEl.textContent = `${monthNames[month]} ${year}`;
+
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const prevLastDay = new Date(year, month, 0);
+
+    let startDay = firstDay.getDay();
+    startDay = startDay === 0 ? 6 : startDay - 1;
+
+    const days = [];
+
+    const dayHeaders = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    dayHeaders.forEach(header => {
+        days.push(`<div class="calendar-day-header">${header}</div>`);
+    });
+
+    for (let i = startDay; i > 0; i--) {
+        const day = prevLastDay.getDate() - i + 1;
+        days.push(`<div class="calendar-day other-month"><div class="day-number">${day}</div></div>`);
+    }
+
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayExpenses = expenses.filter(exp => exp.created_at.startsWith(dateStr));
+        const totalAmount = dayExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+
+        const hasExpenses = dayExpenses.length > 0;
+        const isSelected = selectedDate === dateStr;
+
+        days.push(`
+            <div class="calendar-day ${hasExpenses ? 'has-expenses' : ''} ${isSelected ? 'selected' : ''}"
+                 onclick="selectCalendarDay('${dateStr}')">
+                <div class="day-number">${day}</div>
+                ${hasExpenses ? `<div class="day-amount">${totalAmount.toFixed(0)} ₪</div>` : ''}
+            </div>
+        `);
+    }
+
+    const remainingDays = 42 - days.length;
+    for (let day = 1; day <= remainingDays; day++) {
+        days.push(`<div class="calendar-day other-month"><div class="day-number">${day}</div></div>`);
+    }
+
+    calendar.innerHTML = days.join('');
+}
+
+function selectCalendarDay(dateStr) {
+    selectedDate = dateStr;
+    renderCalendar();
+
+    filteredExpenses = expenses.filter(exp => exp.created_at.startsWith(dateStr));
+
+    if (filteredExpenses.length > 0) {
+        applySort();
+        renderExpenses();
+        renderStats();
+
+        document.querySelector('.expenses-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+        expensesList.innerHTML = '<p class="no-data">Нет расходов за выбранную дату</p>';
+        categoryStats.innerHTML = '<p class="no-data">Нет данных</p>';
+        totalAmount.textContent = '0.00';
     }
 }
 
