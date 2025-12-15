@@ -19,6 +19,14 @@ async function initApp() {
     await loadExpenses();
     setupEventListeners();
     renderCalendar();
+    setDefaultDate();
+}
+
+function setDefaultDate() {
+    const dateInput = document.getElementById('expenseDate');
+    const today = new Date();
+    const formattedDate = today.toISOString().split('T')[0];
+    dateInput.value = formattedDate;
 }
 
 function setupEventListeners() {
@@ -39,11 +47,14 @@ async function handleFormSubmit(e) {
     e.preventDefault();
 
     const formData = new FormData(e.target);
+    const selectedDate = formData.get('expenseDate');
+    const dateTime = new Date(selectedDate + 'T' + new Date().toTimeString().split(' ')[0]);
+
     const expense = {
         amount: parseFloat(formData.get('amount')),
         category: formData.get('category'),
         description: formData.get('description') || '',
-        created_at: new Date().toISOString()
+        created_at: dateTime.toISOString()
     };
 
     try {
@@ -55,6 +66,7 @@ async function handleFormSubmit(e) {
         if (error) throw error;
 
         expenseForm.reset();
+        setDefaultDate();
         await loadExpenses();
 
     } catch (error) {
