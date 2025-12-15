@@ -1,11 +1,13 @@
 let expenses = [];
 let filteredExpenses = [];
+let currentSortBy = 'date-desc';
 
 const expenseForm = document.getElementById('expenseForm');
 const expensesList = document.getElementById('expensesList');
 const categoryStats = document.getElementById('categoryStats');
 const totalAmount = document.getElementById('totalAmount');
 const filterCategory = document.getElementById('filterCategory');
+const sortBy = document.getElementById('sortBy');
 
 async function initApp() {
     await loadExpenses();
@@ -15,6 +17,7 @@ async function initApp() {
 function setupEventListeners() {
     expenseForm.addEventListener('submit', handleFormSubmit);
     filterCategory.addEventListener('change', handleFilterChange);
+    sortBy.addEventListener('change', handleSortChange);
 }
 
 async function handleFormSubmit(e) {
@@ -55,8 +58,9 @@ async function loadExpenses() {
         if (error) throw error;
 
         expenses = data || [];
-        filteredExpenses = expenses;
+        filteredExpenses = [...expenses];
 
+        applySort();
         renderExpenses();
         renderStats();
 
@@ -71,13 +75,40 @@ function handleFilterChange(e) {
     const selectedCategory = e.target.value;
 
     if (selectedCategory === 'all') {
-        filteredExpenses = expenses;
+        filteredExpenses = [...expenses];
     } else {
         filteredExpenses = expenses.filter(expense => expense.category === selectedCategory);
     }
 
+    applySort();
     renderExpenses();
     renderStats();
+}
+
+function handleSortChange(e) {
+    currentSortBy = e.target.value;
+    applySort();
+    renderExpenses();
+}
+
+function applySort() {
+    switch (currentSortBy) {
+        case 'date-desc':
+            filteredExpenses.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            break;
+        case 'date-asc':
+            filteredExpenses.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            break;
+        case 'amount-desc':
+            filteredExpenses.sort((a, b) => b.amount - a.amount);
+            break;
+        case 'amount-asc':
+            filteredExpenses.sort((a, b) => a.amount - b.amount);
+            break;
+        case 'category':
+            filteredExpenses.sort((a, b) => a.category.localeCompare(b.category, 'ru'));
+            break;
+    }
 }
 
 function renderExpenses() {

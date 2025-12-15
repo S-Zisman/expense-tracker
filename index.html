@@ -47,23 +47,36 @@
                 </form>
             </section>
 
-            <!-- Фильтр по категориям -->
+            <!-- Фильтр и сортировка -->
             <section class="filter-section">
-                <h2>Фильтр</h2>
+                <h2>Фильтр и сортировка</h2>
                 <div class="filter-controls">
-                    <label for="filterCategory">Категория:</label>
-                    <select id="filterCategory">
-                        <option value="all">Все категории</option>
-                        <option value="Продукты">Продукты</option>
-                        <option value="Транспорт">Транспорт</option>
-                        <option value="Развлечения">Развлечения</option>
-                        <option value="Путешествия">Путешествия</option>
-                        <option value="Здоровье">Здоровье</option>
-                        <option value="Одежда">Одежда</option>
-                        <option value="Образование">Образование</option>
-                        <option value="Коммунальные услуги">Коммунальные услуги</option>
-                        <option value="Другое">Другое</option>
-                    </select>
+                    <div class="filter-group">
+                        <label for="filterCategory">Категория:</label>
+                        <select id="filterCategory">
+                            <option value="all">Все категории</option>
+                            <option value="Продукты">Продукты</option>
+                            <option value="Транспорт">Транспорт</option>
+                            <option value="Развлечения">Развлечения</option>
+                            <option value="Путешествия">Путешествия</option>
+                            <option value="Здоровье">Здоровье</option>
+                            <option value="Одежда">Одежда</option>
+                            <option value="Образование">Образование</option>
+                            <option value="Коммунальные услуги">Коммунальные услуги</option>
+                            <option value="Другое">Другое</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="sortBy">Сортировка:</label>
+                        <select id="sortBy">
+                            <option value="date-desc">Дата (новые первые)</option>
+                            <option value="date-asc">Дата (старые первые)</option>
+                            <option value="amount-desc">Сумма (большие первые)</option>
+                            <option value="amount-asc">Сумма (маленькие первые)</option>
+                            <option value="category">По категории (А-Я)</option>
+                        </select>
+                    </div>
                 </div>
             </section>
 
