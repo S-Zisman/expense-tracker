@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Трекер расходов</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Трекер расходов</h1>
+        </header>
+
+        <main>
+            <!-- Форма добавления расхода -->
+            <section class="expense-form-section">
+                <h2>Добавить расход</h2>
+                <form id="expenseForm">
+                    <div class="form-group">
+                        <label for="amount">Сумма (₽)</label>
+                        <input type="number" id="amount" name="amount" required min="0" step="0.01" placeholder="0.00">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="category">Категория</label>
+                        <select id="category" name="category" required>
+                            <option value="">Выберите категорию</option>
+                            <option value="Продукты">Продукты</option>
+                            <option value="Транспорт">Транспорт</option>
+                            <option value="Развлечения">Развлечения</option>
+                            <option value="Здоровье">Здоровье</option>
+                            <option value="Одежда">Одежда</option>
+                            <option value="Образование">Образование</option>
+                            <option value="Коммунальные услуги">Коммунальные услуги</option>
+                            <option value="Другое">Другое</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Описание</label>
+                        <input type="text" id="description" name="description" placeholder="Краткое описание" maxlength="100">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Добавить расход</button>
+                </form>
+            </section>
+
+            <!-- Фильтр по категориям -->
+            <section class="filter-section">
+                <h2>Фильтр</h2>
+                <div class="filter-controls">
+                    <label for="filterCategory">Категория:</label>
+                    <select id="filterCategory">
+                        <option value="all">Все категории</option>
+                        <option value="Продукты">Продукты</option>
+                        <option value="Транспорт">Транспорт</option>
+                        <option value="Развлечения">Развлечения</option>
+                        <option value="Здоровье">Здоровье</option>
+                        <option value="Одежда">Одежда</option>
+                        <option value="Образование">Образование</option>
+                        <option value="Коммунальные услуги">Коммунальные услуги</option>
+                        <option value="Другое">Другое</option>
+                    </select>
+                </div>
+            </section>
+
+            <!-- Статистика по категориям -->
+            <section class="stats-section">
+                <h2>Статистика по категориям</h2>
+                <div id="categoryStats" class="category-stats">
+                    <p class="loading">Загрузка статистики...</p>
+                </div>
+                <div class="total-expense">
+                    <h3>Общая сумма: <span id="totalAmount">0.00</span> ₽</h3>
+                </div>
+            </section>
+
+            <!-- Список расходов -->
+            <section class="expenses-section">
+                <h2>История расходов</h2>
+                <div id="expensesList" class="expenses-list">
+                    <p class="loading">Загрузка расходов...</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
