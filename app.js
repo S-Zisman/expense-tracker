@@ -95,7 +95,7 @@ function renderExpenses() {
                 <div class="expense-category">${expense.category}</div>
                 ${expense.description ? `<div class="expense-description">${expense.description}</div>` : ''}
             </div>
-            <div class="expense-amount">${expense.amount.toFixed(2)} ₽</div>
+            <div class="expense-amount">${expense.amount.toFixed(2)} ₪</div>
             <button class="btn btn-danger" onclick="deleteExpense('${expense.id}')">Удалить</button>
         </div>
     `).join('');
@@ -116,7 +116,7 @@ function renderStats() {
         .map(([category, amount]) => `
             <div class="stat-card">
                 <h3>${category}</h3>
-                <div class="amount">${amount.toFixed(2)} ₽</div>
+                <div class="amount">${amount.toFixed(2)} ₪</div>
             </div>
         `).join('');
 
