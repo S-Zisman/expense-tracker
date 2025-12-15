@@ -3,6 +3,7 @@ let filteredExpenses = [];
 let currentSortBy = 'date-desc';
 let currentDate = new Date();
 let selectedDate = null;
+let currentUser = null;
 
 const expenseForm = document.getElementById('expenseForm');
 const expensesList = document.getElementById('expensesList');
@@ -15,11 +16,45 @@ const currentMonthEl = document.getElementById('currentMonth');
 const prevMonthBtn = document.getElementById('prevMonth');
 const nextMonthBtn = document.getElementById('nextMonth');
 
+async function checkAuth() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+        window.location.href = 'auth.html';
+        return false;
+    }
+    currentUser = session.user;
+    return true;
+}
+
 async function initApp() {
+    const isAuthenticated = await checkAuth();
+    if (!isAuthenticated) return;
+
+    setupUserInfo();
     await loadExpenses();
     setupEventListeners();
     renderCalendar();
     setDefaultDate();
+}
+
+function setupUserInfo() {
+    const header = document.querySelector('header');
+    const userInfo = document.createElement('div');
+    userInfo.style.cssText = 'text-align: center; margin-top: 15px;';
+    userInfo.innerHTML = `
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 10px;">
+            ${currentUser.email}
+        </p>
+        <button onclick="handleLogout()" class="btn" style="padding: 8px 20px; font-size: 0.85rem; background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444;">
+            Выйти
+        </button>
+    `;
+    header.appendChild(userInfo);
+}
+
+async function handleLogout() {
+    await supabase.auth.signOut();
+    window.location.href = 'auth.html';
 }
 
 function setDefaultDate() {
@@ -54,7 +89,8 @@ async function handleFormSubmit(e) {
         amount: parseFloat(formData.get('amount')),
         category: formData.get('category'),
         description: formData.get('description') || '',
-        created_at: dateTime.toISOString()
+        created_at: dateTime.toISOString(),
+        user_id: currentUser.id
     };
 
     try {
@@ -80,6 +116,7 @@ async function loadExpenses() {
         const { data, error } = await supabase
             .from('expenses')
             .select('*')
+            .eq('user_id', currentUser.id)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
