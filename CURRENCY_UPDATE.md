@@ -109,8 +109,8 @@ CREATE INDEX IF NOT EXISTS idx_user_categories_user_id ON user_categories(user_i
 
 -- Добавляем стандартные категории для всех существующих пользователей
 INSERT INTO user_categories (user_id, name)
-SELECT DISTINCT user_id, category_name
-FROM auth.users
+SELECT DISTINCT u.id, category_name
+FROM auth.users u
 CROSS JOIN (
     VALUES
         ('Продукты'),
