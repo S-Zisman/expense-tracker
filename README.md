@@ -283,7 +283,7 @@ expense-tracker/
 
 ## 👨‍💻 Автор
 
-**Ваше имя**
+**Sergey Zisman**
 - GitHub: [@s-zisman](https://github.com/s-zisman)
 
 ## 🙏 Благодарности
