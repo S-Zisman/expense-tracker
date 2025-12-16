@@ -40,18 +40,14 @@
 
                     <div class="form-group">
                         <label for="category">Категория</label>
-                        <select id="category" name="category" required>
-                            <option value="">Выберите категорию</option>
-                            <option value="Продукты">Продукты</option>
-                            <option value="Транспорт">Транспорт</option>
-                            <option value="Развлечения">Развлечения</option>
-                            <option value="Путешествия">Путешествия</option>
-                            <option value="Здоровье">Здоровье</option>
-                            <option value="Одежда">Одежда</option>
-                            <option value="Образование">Образование</option>
-                            <option value="Коммунальные услуги">Коммунальные услуги</option>
-                            <option value="Другое">Другое</option>
-                        </select>
+                        <div style="display: flex; gap: 10px;">
+                            <select id="category" name="category" required style="flex: 1;">
+                                <option value="">Выберите категорию</option>
+                            </select>
+                            <button type="button" class="btn" onclick="showCategoriesModal()" style="padding: 15px 20px; background: rgba(255, 215, 0, 0.2); color: var(--gold); border: 1px solid var(--gold); white-space: nowrap;">
+                                Управление
+                            </button>
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -76,15 +72,6 @@
                         <label for="filterCategory">Категория:</label>
                         <select id="filterCategory">
                             <option value="all">Все категории</option>
-                            <option value="Продукты">Продукты</option>
-                            <option value="Транспорт">Транспорт</option>
-                            <option value="Развлечения">Развлечения</option>
-                            <option value="Путешествия">Путешествия</option>
-                            <option value="Здоровье">Здоровье</option>
-                            <option value="Одежда">Одежда</option>
-                            <option value="Образование">Образование</option>
-                            <option value="Коммунальные услуги">Коммунальные услуги</option>
-                            <option value="Другое">Другое</option>
                         </select>
                     </div>
 
@@ -167,6 +154,29 @@
             </div>
 
             <button id="saveCurrencyBtn" class="btn btn-primary" disabled>Сохранить</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно управления категориями -->
+    <div id="categoriesModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <h2>Управление категориями</h2>
+            <p class="modal-description">Добавляйте, редактируйте или удаляйте свои категории расходов</p>
+
+            <div class="categories-container">
+                <div class="add-category-form">
+                    <input type="text" id="newCategoryInput" placeholder="Название новой категории" maxlength="50">
+                    <button onclick="addCategory()" class="btn btn-primary">Добавить</button>
+                </div>
+
+                <div id="categoriesList" class="categories-list">
+                    <!-- Список категорий будет загружен динамически -->
+                </div>
+            </div>
+
+            <button onclick="closeCategoriesModal()" class="btn" style="margin-top: 20px; background: rgba(255, 255, 255, 0.1);">
+                Закрыть
+            </button>
         </div>
     </div>
 

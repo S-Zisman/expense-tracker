@@ -7,6 +7,7 @@ let currentUser = null;
 let currentCurrency = 'ILS';
 let exchangeRates = {};
 let selectedModalCurrency = null;
+let userCategories = [];
 
 const currencySymbols = {
     'ILS': '₪',
@@ -46,6 +47,7 @@ async function initApp() {
 
     setupUserInfo();
     await checkAndSetupDefaultCurrency();
+    await loadUserCategories();
     await loadExchangeRates();
     await loadExpenses();
     setupEventListeners();
@@ -211,6 +213,280 @@ function updateCurrencyDisplay() {
 
 function getCurrencySymbol(currency = null) {
     return currencySymbols[currency || currentCurrency];
+}
+
+// ============ УПРАВЛЕНИЕ КАТЕГОРИЯМИ ============
+
+// Загрузка категорий пользователя
+async function loadUserCategories() {
+    try {
+        const { data, error } = await supabase
+            .from('user_categories')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .order('name');
+
+        if (error) throw error;
+
+        userCategories = data || [];
+
+        // Если у пользователя нет категорий, создаем стандартные
+        if (userCategories.length === 0) {
+            await createDefaultCategories();
+            await loadUserCategories();
+        } else {
+            updateCategorySelects();
+        }
+    } catch (error) {
+        console.error('Ошибка при загрузке категорий:', error);
+        userCategories = [];
+    }
+}
+
+// Создание стандартных категорий для нового пользователя
+async function createDefaultCategories() {
+    const defaultCategories = [
+        'Продукты',
+        'Транспорт',
+        'Развлечения',
+        'Путешествия',
+        'Здоровье',
+        'Одежда',
+        'Образование',
+        'Коммунальные услуги',
+        'Другое'
+    ];
+
+    try {
+        const categories = defaultCategories.map(name => ({
+            user_id: currentUser.id,
+            name: name
+        }));
+
+        const { error } = await supabase
+            .from('user_categories')
+            .insert(categories);
+
+        if (error) throw error;
+    } catch (error) {
+        console.error('Ошибка при создании стандартных категорий:', error);
+    }
+}
+
+// Обновление выпадающих списков категорий
+function updateCategorySelects() {
+    const categorySelect = document.getElementById('category');
+    const filterCategorySelect = document.getElementById('filterCategory');
+
+    // Обновляем основной селект
+    categorySelect.innerHTML = '<option value="">Выберите категорию</option>';
+    userCategories.forEach(cat => {
+        categorySelect.innerHTML += `<option value="${cat.name}">${cat.name}</option>`;
+    });
+
+    // Обновляем фильтр
+    filterCategorySelect.innerHTML = '<option value="all">Все категории</option>';
+    userCategories.forEach(cat => {
+        filterCategorySelect.innerHTML += `<option value="${cat.name}">${cat.name}</option>`;
+    });
+}
+
+// Показать модальное окно управления категориями
+function showCategoriesModal() {
+    const modal = document.getElementById('categoriesModal');
+    modal.classList.add('show');
+    renderCategoriesList();
+}
+
+// Закрыть модальное окно категорий
+function closeCategoriesModal() {
+    const modal = document.getElementById('categoriesModal');
+    modal.classList.remove('show');
+    document.getElementById('newCategoryInput').value = '';
+}
+
+// Отображение списка категорий в модальном окне
+function renderCategoriesList() {
+    const list = document.getElementById('categoriesList');
+
+    if (userCategories.length === 0) {
+        list.innerHTML = '<p class="no-data">Нет категорий</p>';
+        return;
+    }
+
+    list.innerHTML = userCategories.map(cat => `
+        <div class="category-item" id="cat-${cat.id}">
+            <span class="category-name">${cat.name}</span>
+            <div class="category-actions">
+                <button class="btn btn-edit" onclick="editCategory('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')">
+                    Изменить
+                </button>
+                <button class="btn btn-delete" onclick="deleteCategory('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')">
+                    Удалить
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Добавление новой категории
+async function addCategory() {
+    const input = document.getElementById('newCategoryInput');
+    const name = input.value.trim();
+
+    if (!name) {
+        alert('Введите название категории');
+        return;
+    }
+
+    // Проверка на дубликат
+    if (userCategories.some(cat => cat.name.toLowerCase() === name.toLowerCase())) {
+        alert('Категория с таким названием уже существует');
+        return;
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('user_categories')
+            .insert([{
+                user_id: currentUser.id,
+                name: name
+            }])
+            .select();
+
+        if (error) throw error;
+
+        input.value = '';
+        await loadUserCategories();
+        renderCategoriesList();
+    } catch (error) {
+        console.error('Ошибка при добавлении категории:', error);
+        alert('Не удалось добавить категорию');
+    }
+}
+
+// Редактирование категории
+function editCategory(id, currentName) {
+    const item = document.getElementById(`cat-${id}`);
+    item.classList.add('editing');
+
+    item.innerHTML = `
+        <input type="text" class="category-name-input" id="edit-input-${id}" value="${currentName}" maxlength="50">
+        <div class="category-actions">
+            <button class="btn btn-save" onclick="saveCategory('${id}')">
+                Сохранить
+            </button>
+            <button class="btn btn-cancel" onclick="cancelEdit('${id}', '${currentName.replace(/'/g, "\\'")}')">
+                Отмена
+            </button>
+        </div>
+    `;
+
+    document.getElementById(`edit-input-${id}`).focus();
+}
+
+// Отмена редактирования
+function cancelEdit(id, originalName) {
+    const item = document.getElementById(`cat-${id}`);
+    item.classList.remove('editing');
+    renderCategoriesList();
+}
+
+// Сохранение отредактированной категории
+async function saveCategory(id) {
+    const input = document.getElementById(`edit-input-${id}`);
+    const newName = input.value.trim();
+
+    if (!newName) {
+        alert('Название категории не может быть пустым');
+        return;
+    }
+
+    // Проверка на дубликат (исключая текущую категорию)
+    if (userCategories.some(cat => cat.id !== id && cat.name.toLowerCase() === newName.toLowerCase())) {
+        alert('Категория с таким названием уже существует');
+        return;
+    }
+
+    try {
+        // Получаем старое название категории
+        const oldCategory = userCategories.find(cat => cat.id === id);
+        const oldName = oldCategory.name;
+
+        // Обновляем категорию
+        const { error: updateError } = await supabase
+            .from('user_categories')
+            .update({ name: newName })
+            .eq('id', id);
+
+        if (updateError) throw updateError;
+
+        // Обновляем категории во всех расходах с таким названием
+        const { error: expensesError } = await supabase
+            .from('expenses')
+            .update({ category: newName })
+            .eq('user_id', currentUser.id)
+            .eq('category', oldName);
+
+        if (expensesError) throw expensesError;
+
+        await loadUserCategories();
+        await loadExpenses();
+        renderCategoriesList();
+    } catch (error) {
+        console.error('Ошибка при сохранении категории:', error);
+        alert('Не удалось сохранить категорию');
+    }
+}
+
+// Удаление категории
+async function deleteCategory(id, name) {
+    // Проверяем, есть ли расходы с этой категорией
+    const expensesWithCategory = expenses.filter(exp => exp.category === name);
+
+    if (expensesWithCategory.length > 0) {
+        const confirm = window.confirm(
+            `У вас есть ${expensesWithCategory.length} расход(ов) в категории "${name}". ` +
+            `Удаление категории переместит эти расходы в категорию "Другое". Продолжить?`
+        );
+
+        if (!confirm) return;
+
+        // Переносим расходы в категорию "Другое"
+        try {
+            const { error: updateError } = await supabase
+                .from('expenses')
+                .update({ category: 'Другое' })
+                .eq('user_id', currentUser.id)
+                .eq('category', name);
+
+            if (updateError) throw updateError;
+        } catch (error) {
+            console.error('Ошибка при переносе расходов:', error);
+            alert('Не удалось перенести расходы');
+            return;
+        }
+    } else {
+        if (!window.confirm(`Удалить категорию "${name}"?`)) {
+            return;
+        }
+    }
+
+    try {
+        const { error } = await supabase
+            .from('user_categories')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        await loadUserCategories();
+        await loadExpenses();
+        renderCategoriesList();
+    } catch (error) {
+        console.error('Ошибка при удалении категории:', error);
+        alert('Не удалось удалить категорию');
+    }
 }
 
 function setupEventListeners() {
