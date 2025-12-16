@@ -4,6 +4,14 @@ let currentSortBy = 'date-desc';
 let currentDate = new Date();
 let selectedDate = null;
 let currentUser = null;
+let currentCurrency = 'ILS';
+
+const currencySymbols = {
+    'ILS': '₪',
+    'USD': '$',
+    'RUB': '₽',
+    'EUR': '€'
+};
 
 const expenseForm = document.getElementById('expenseForm');
 const expensesList = document.getElementById('expensesList');
@@ -15,6 +23,7 @@ const calendar = document.getElementById('calendar');
 const currentMonthEl = document.getElementById('currentMonth');
 const prevMonthBtn = document.getElementById('prevMonth');
 const nextMonthBtn = document.getElementById('nextMonth');
+const currencySelect = document.getElementById('currencySelect');
 
 async function checkAuth() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -31,6 +40,7 @@ async function initApp() {
     if (!isAuthenticated) return;
 
     setupUserInfo();
+    loadCurrency();
     await loadExpenses();
     setupEventListeners();
     renderCalendar();
@@ -64,10 +74,46 @@ function setDefaultDate() {
     dateInput.value = formattedDate;
 }
 
+function loadCurrency() {
+    const savedCurrency = localStorage.getItem(`currency_${currentUser.id}`);
+    if (savedCurrency) {
+        currentCurrency = savedCurrency;
+        currencySelect.value = savedCurrency;
+    }
+    updateCurrencyDisplay();
+}
+
+function handleCurrencyChange(e) {
+    currentCurrency = e.target.value;
+    localStorage.setItem(`currency_${currentUser.id}`, currentCurrency);
+    updateCurrencyDisplay();
+    renderExpenses();
+    renderStats();
+    renderCalendar();
+}
+
+function updateCurrencyDisplay() {
+    const symbol = currencySymbols[currentCurrency];
+    const amountLabel = document.getElementById('amountLabel');
+    const totalCurrency = document.getElementById('totalCurrency');
+
+    if (amountLabel) {
+        amountLabel.textContent = `Сумма (${symbol})`;
+    }
+    if (totalCurrency) {
+        totalCurrency.textContent = symbol;
+    }
+}
+
+function getCurrencySymbol() {
+    return currencySymbols[currentCurrency];
+}
+
 function setupEventListeners() {
     expenseForm.addEventListener('submit', handleFormSubmit);
     filterCategory.addEventListener('change', handleFilterChange);
     sortBy.addEventListener('change', handleSortChange);
+    currencySelect.addEventListener('change', handleCurrencyChange);
     prevMonthBtn.addEventListener('click', () => {
         currentDate.setMonth(currentDate.getMonth() - 1);
         renderCalendar();
@@ -191,7 +237,7 @@ function renderExpenses() {
                 <div class="expense-category">${expense.category}</div>
                 ${expense.description ? `<div class="expense-description">${expense.description}</div>` : ''}
             </div>
-            <div class="expense-amount">${expense.amount.toFixed(2)} ₪</div>
+            <div class="expense-amount">${expense.amount.toFixed(2)} ${getCurrencySymbol()}</div>
             <button class="btn btn-danger" onclick="deleteExpense('${expense.id}')">Удалить</button>
         </div>
     `).join('');
@@ -212,7 +258,7 @@ function renderStats() {
         .map(([category, amount]) => `
             <div class="stat-card">
                 <h3>${category}</h3>
-                <div class="amount">${amount.toFixed(2)} ₪</div>
+                <div class="amount">${amount.toFixed(2)} ${getCurrencySymbol()}</div>
             </div>
         `).join('');
 
@@ -307,7 +353,7 @@ function renderCalendar() {
             <div class="calendar-day ${hasExpenses ? 'has-expenses' : ''} ${isSelected ? 'selected' : ''}"
                  onclick="selectCalendarDay('${dateStr}')">
                 <div class="day-number">${day}</div>
-                ${hasExpenses ? `<div class="day-amount">${totalAmount.toFixed(0)} ₪</div>` : ''}
+                ${hasExpenses ? `<div class="day-amount">${totalAmount.toFixed(0)} ${getCurrencySymbol()}</div>` : ''}
             </div>
         `);
     }
