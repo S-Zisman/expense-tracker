@@ -24,8 +24,18 @@
                 <h2>Добавить расход</h2>
                 <form id="expenseForm">
                     <div class="form-group">
-                        <label for="amount" id="amountLabel">Сумма (₪)</label>
+                        <label for="amount">Сумма</label>
                         <input type="number" id="amount" name="amount" required min="0" step="0.01" placeholder="0.00">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expenseCurrency">Валюта расхода</label>
+                        <select id="expenseCurrency" name="expenseCurrency" required>
+                            <option value="ILS">₪ Шекели (ILS)</option>
+                            <option value="USD">$ Доллары (USD)</option>
+                            <option value="RUB">₽ Рубли (RUB)</option>
+                            <option value="EUR">€ Евро (EUR)</option>
+                        </select>
                     </div>
 
                     <div class="form-group">
@@ -89,15 +99,6 @@
                         </select>
                     </div>
 
-                    <div class="filter-group">
-                        <label for="currencySelect">Валюта:</label>
-                        <select id="currencySelect">
-                            <option value="ILS">₪ Шекели (ILS)</option>
-                            <option value="USD">$ Доллары (USD)</option>
-                            <option value="RUB">₽ Рубли (RUB)</option>
-                            <option value="EUR">€ Евро (EUR)</option>
-                        </select>
-                    </div>
                 </div>
             </section>
 
@@ -133,6 +134,40 @@
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- Модальное окно выбора валюты при первом входе -->
+    <div id="currencyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-logo">💰</div>
+            <h2>Выберите вашу основную валюту</h2>
+            <p class="modal-description">Это валюта, в которой будет отображаться общая статистика. Вы всегда сможете добавлять расходы в любой валюте.</p>
+
+            <div class="currency-options">
+                <div class="currency-option" data-currency="ILS">
+                    <div class="currency-symbol">₪</div>
+                    <div class="currency-name">Шекели</div>
+                    <div class="currency-code">ILS</div>
+                </div>
+                <div class="currency-option" data-currency="USD">
+                    <div class="currency-symbol">$</div>
+                    <div class="currency-name">Доллары</div>
+                    <div class="currency-code">USD</div>
+                </div>
+                <div class="currency-option" data-currency="RUB">
+                    <div class="currency-symbol">₽</div>
+                    <div class="currency-name">Рубли</div>
+                    <div class="currency-code">RUB</div>
+                </div>
+                <div class="currency-option" data-currency="EUR">
+                    <div class="currency-symbol">€</div>
+                    <div class="currency-name">Евро</div>
+                    <div class="currency-code">EUR</div>
+                </div>
+            </div>
+
+            <button id="saveCurrencyBtn" class="btn btn-primary" disabled>Сохранить</button>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

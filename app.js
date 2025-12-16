@@ -5,6 +5,8 @@ let currentDate = new Date();
 let selectedDate = null;
 let currentUser = null;
 let currentCurrency = 'ILS';
+let exchangeRates = {};
+let selectedModalCurrency = null;
 
 const currencySymbols = {
     'ILS': '₪',
@@ -12,6 +14,9 @@ const currencySymbols = {
     'RUB': '₽',
     'EUR': '€'
 };
+
+// API для получения курсов валют (бесплатный, без ключа)
+const EXCHANGE_API_URL = 'https://open.er-api.com/v6/latest/';
 
 const expenseForm = document.getElementById('expenseForm');
 const expensesList = document.getElementById('expensesList');
@@ -23,7 +28,7 @@ const calendar = document.getElementById('calendar');
 const currentMonthEl = document.getElementById('currentMonth');
 const prevMonthBtn = document.getElementById('prevMonth');
 const nextMonthBtn = document.getElementById('nextMonth');
-const currencySelect = document.getElementById('currencySelect');
+const expenseCurrencySelect = document.getElementById('expenseCurrency');
 
 async function checkAuth() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -40,9 +45,11 @@ async function initApp() {
     if (!isAuthenticated) return;
 
     setupUserInfo();
-    loadCurrency();
+    await checkAndSetupDefaultCurrency();
+    await loadExchangeRates();
     await loadExpenses();
     setupEventListeners();
+    setupModalListeners();
     renderCalendar();
     setDefaultDate();
 }
@@ -74,46 +81,142 @@ function setDefaultDate() {
     dateInput.value = formattedDate;
 }
 
-function loadCurrency() {
-    const savedCurrency = localStorage.getItem(`currency_${currentUser.id}`);
-    if (savedCurrency) {
-        currentCurrency = savedCurrency;
-        currencySelect.value = savedCurrency;
+// Проверяем и настраиваем валюту по умолчанию
+async function checkAndSetupDefaultCurrency() {
+    try {
+        const { data, error } = await supabase
+            .from('user_settings')
+            .select('default_currency')
+            .eq('user_id', currentUser.id)
+            .single();
+
+        if (error && error.code !== 'PGRST116') {
+            throw error;
+        }
+
+        if (data) {
+            currentCurrency = data.default_currency;
+            expenseCurrencySelect.value = currentCurrency;
+        } else {
+            showCurrencyModal();
+        }
+
+        updateCurrencyDisplay();
+    } catch (error) {
+        console.error('Ошибка при загрузке настроек валюты:', error);
+        showCurrencyModal();
     }
-    updateCurrencyDisplay();
 }
 
-function handleCurrencyChange(e) {
-    currentCurrency = e.target.value;
-    localStorage.setItem(`currency_${currentUser.id}`, currentCurrency);
-    updateCurrencyDisplay();
-    renderExpenses();
-    renderStats();
-    renderCalendar();
+// Показываем модальное окно выбора валюты
+function showCurrencyModal() {
+    const modal = document.getElementById('currencyModal');
+    modal.classList.add('show');
+}
+
+// Настройка слушателей для модального окна
+function setupModalListeners() {
+    const currencyOptions = document.querySelectorAll('.currency-option');
+    const saveCurrencyBtn = document.getElementById('saveCurrencyBtn');
+
+    currencyOptions.forEach(option => {
+        option.addEventListener('click', () => {
+            currencyOptions.forEach(opt => opt.classList.remove('selected'));
+            option.classList.add('selected');
+            selectedModalCurrency = option.dataset.currency;
+            saveCurrencyBtn.disabled = false;
+        });
+    });
+
+    saveCurrencyBtn.addEventListener('click', async () => {
+        if (selectedModalCurrency) {
+            await saveDefaultCurrency(selectedModalCurrency);
+            currentCurrency = selectedModalCurrency;
+            expenseCurrencySelect.value = currentCurrency;
+            updateCurrencyDisplay();
+            document.getElementById('currencyModal').classList.remove('show');
+            await loadExpenses();
+        }
+    });
+}
+
+// Сохранение основной валюты пользователя в базу
+async function saveDefaultCurrency(currency) {
+    try {
+        const { error } = await supabase
+            .from('user_settings')
+            .upsert({
+                user_id: currentUser.id,
+                default_currency: currency,
+                updated_at: new Date().toISOString()
+            }, {
+                onConflict: 'user_id'
+            });
+
+        if (error) throw error;
+    } catch (error) {
+        console.error('Ошибка при сохранении валюты:', error);
+        alert('Не удалось сохранить настройки валюты');
+    }
+}
+
+// Загрузка курсов валют
+async function loadExchangeRates() {
+    try {
+        const response = await fetch(`${EXCHANGE_API_URL}${currentCurrency}`);
+        const data = await response.json();
+
+        if (data.result === 'success') {
+            exchangeRates = data.rates;
+        } else {
+            console.error('Ошибка загрузки курсов валют');
+            exchangeRates = { ILS: 1, USD: 1, RUB: 1, EUR: 1 };
+        }
+    } catch (error) {
+        console.error('Ошибка при загрузке курсов валют:', error);
+        exchangeRates = { ILS: 1, USD: 1, RUB: 1, EUR: 1 };
+    }
+}
+
+// Конвертация суммы из одной валюты в другую
+function convertCurrency(amount, fromCurrency, toCurrency) {
+    if (fromCurrency === toCurrency) return amount;
+
+    if (!exchangeRates[toCurrency]) {
+        return amount;
+    }
+
+    if (fromCurrency === currentCurrency) {
+        return amount * exchangeRates[toCurrency];
+    }
+
+    const amountInBaseCurrency = amount / exchangeRates[fromCurrency];
+    return amountInBaseCurrency;
+}
+
+// Конвертация расхода в основную валюту пользователя
+function convertToUserCurrency(expense) {
+    const expenseCurrency = expense.currency || currentCurrency;
+    return convertCurrency(expense.amount, expenseCurrency, currentCurrency);
 }
 
 function updateCurrencyDisplay() {
     const symbol = currencySymbols[currentCurrency];
-    const amountLabel = document.getElementById('amountLabel');
     const totalCurrency = document.getElementById('totalCurrency');
 
-    if (amountLabel) {
-        amountLabel.textContent = `Сумма (${symbol})`;
-    }
     if (totalCurrency) {
         totalCurrency.textContent = symbol;
     }
 }
 
-function getCurrencySymbol() {
-    return currencySymbols[currentCurrency];
+function getCurrencySymbol(currency = null) {
+    return currencySymbols[currency || currentCurrency];
 }
 
 function setupEventListeners() {
     expenseForm.addEventListener('submit', handleFormSubmit);
     filterCategory.addEventListener('change', handleFilterChange);
     sortBy.addEventListener('change', handleSortChange);
-    currencySelect.addEventListener('change', handleCurrencyChange);
     prevMonthBtn.addEventListener('click', () => {
         currentDate.setMonth(currentDate.getMonth() - 1);
         renderCalendar();
@@ -135,6 +238,7 @@ async function handleFormSubmit(e) {
         amount: parseFloat(formData.get('amount')),
         category: formData.get('category'),
         description: formData.get('description') || '',
+        currency: formData.get('expenseCurrency'),
         created_at: dateTime.toISOString(),
         user_id: currentUser.id
     };
@@ -149,6 +253,7 @@ async function handleFormSubmit(e) {
 
         expenseForm.reset();
         setDefaultDate();
+        expenseCurrencySelect.value = currentCurrency;
         await loadExpenses();
 
     } catch (error) {
@@ -228,19 +333,29 @@ function renderExpenses() {
         return;
     }
 
-    expensesList.innerHTML = filteredExpenses.map(expense => `
-        <div class="expense-item" data-id="${expense.id}">
-            <div class="expense-date">
-                ${formatDate(expense.created_at)}
+    expensesList.innerHTML = filteredExpenses.map(expense => {
+        const expenseCurrency = expense.currency || currentCurrency;
+        const expenseSymbol = getCurrencySymbol(expenseCurrency);
+        const convertedAmount = convertToUserCurrency(expense);
+        const showConversion = expenseCurrency !== currentCurrency;
+
+        return `
+            <div class="expense-item" data-id="${expense.id}">
+                <div class="expense-date">
+                    ${formatDate(expense.created_at)}
+                </div>
+                <div class="expense-details">
+                    <div class="expense-category">${expense.category}</div>
+                    ${expense.description ? `<div class="expense-description">${expense.description}</div>` : ''}
+                </div>
+                <div class="expense-amount">
+                    ${expense.amount.toFixed(2)} ${expenseSymbol}
+                    ${showConversion ? `<div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 5px;">(≈ ${convertedAmount.toFixed(2)} ${getCurrencySymbol()})</div>` : ''}
+                </div>
+                <button class="btn btn-danger" onclick="deleteExpense('${expense.id}')">Удалить</button>
             </div>
-            <div class="expense-details">
-                <div class="expense-category">${expense.category}</div>
-                ${expense.description ? `<div class="expense-description">${expense.description}</div>` : ''}
-            </div>
-            <div class="expense-amount">${expense.amount.toFixed(2)} ${getCurrencySymbol()}</div>
-            <button class="btn btn-danger" onclick="deleteExpense('${expense.id}')">Удалить</button>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function renderStats() {
@@ -272,14 +387,18 @@ function calculateCategoryStats() {
         if (!stats[expense.category]) {
             stats[expense.category] = 0;
         }
-        stats[expense.category] += expense.amount;
+        const convertedAmount = convertToUserCurrency(expense);
+        stats[expense.category] += convertedAmount;
     });
 
     return stats;
 }
 
 function calculateTotal() {
-    return filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+    return filteredExpenses.reduce((sum, expense) => {
+        const convertedAmount = convertToUserCurrency(expense);
+        return sum + convertedAmount;
+    }, 0);
 }
 
 function formatDate(dateString) {
@@ -344,7 +463,9 @@ function renderCalendar() {
     for (let day = 1; day <= lastDay.getDate(); day++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const dayExpenses = expenses.filter(exp => exp.created_at.startsWith(dateStr));
-        const totalAmount = dayExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+        const totalAmount = dayExpenses.reduce((sum, exp) => {
+            return sum + convertToUserCurrency(exp);
+        }, 0);
 
         const hasExpenses = dayExpenses.length > 0;
         const isSelected = selectedDate === dateStr;
